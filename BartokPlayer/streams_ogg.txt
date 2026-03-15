@@ -1,0 +1,4 @@
+# Bartók Rádió HQ Ogg Vorbis streams (192 kbps)
+# Not yet supported by the player
+https://icast.connectmedia.hu/4767/mr3hq.ogg
+http://mr-stream.connectmedia.hu/4767/mr3hq.ogg

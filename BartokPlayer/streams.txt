@@ -1,3 +1,3 @@
-http://icast.connectmedia.hu/4742/mr3hq.mp3
+# Bartók Rádió HQ MP3 streams (320 kbps)
+https://icast.connectmedia.hu/4742/mr3hq.mp3
 http://mr-stream.mediaconnect.hu/4742/mr3hq.mp3
-http://mr-stream.connectmedia.hu/4741/mr3.mp3
