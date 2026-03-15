@@ -56,8 +56,6 @@ while (!cts.Token.IsCancellationRequested)
             await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
             var readFullyStream = new ReadFullyStream(stream);
 
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Playing.");
-
             while (!cts.Token.IsCancellationRequested)
             {
                 Mp3Frame? frame;
@@ -76,6 +74,7 @@ while (!cts.Token.IsCancellationRequested)
 
                 if (decompressor == null)
                 {
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Stream: {frame.BitRate / 1000} kbps, {frame.SampleRate} Hz, {frame.ChannelMode}, MPEG {frame.MpegVersion} Layer {frame.MpegLayer}");
                     var waveFormat = new Mp3WaveFormat(frame.SampleRate,
                         frame.ChannelMode == ChannelMode.Mono ? 1 : 2,
                         frame.FrameLength, frame.BitRate);
@@ -85,6 +84,7 @@ while (!cts.Token.IsCancellationRequested)
                         BufferDuration = TimeSpan.FromSeconds(30),
                         DiscardOnBufferOverflow = true
                     };
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Playing.");
                     waveOut = new WaveOutEvent();
                     waveOut.Init(bufferedProvider);
                     waveOut.Play();
