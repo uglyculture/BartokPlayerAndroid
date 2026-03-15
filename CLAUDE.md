@@ -8,14 +8,14 @@ Windows console application that streams and plays Bartók Rádió (Hungarian cl
 - NAudio 2.3.0 for MP3 stream decoding and audio playback
 - Published as single-file exe (`publish/BartokPlayer.exe`)
 
-## Stream URL
-- `http://icast.connectmedia.hu/4742/mr3hq.mp3`
+## Stream URLs
+- Stored in `BartokPlayer/streams.txt` (one URL per line, `#` for comments)
+- Player tries each URL in order; falls back to the next on failure
 
 ## Project Structure
-- `BartokPlayer/` — .NET project source (Program.cs)
-- `publish/` — published single-file exe
+- `BartokPlayer/` — .NET project source (Program.cs, streams.txt)
+- `publish/` — published single-file exe + streams.txt
 - `create_shortcut.ps1` — creates a "Bartok Radio" desktop shortcut
-- `bartok_downloader.py` — legacy Python script (downloads + uploads to Dropbox, not used by the player)
 
 ## Build & Publish
 ```bash
