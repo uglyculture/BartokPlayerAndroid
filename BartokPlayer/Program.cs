@@ -223,7 +223,8 @@ class ProgramSchedule
             Console.WriteLine($"  Now: {current.Title} ({current.Start:HH:mm}-{current.End:HH:mm})");
             if (!string.IsNullOrWhiteSpace(current.Description))
             {
-                var desc = Regex.Replace(current.Description, @"(?<!\n)(\d+\.?\s)", "\n$1");
+                // Split numbered music items like ", 2. Brahms:" onto new lines
+                var desc = Regex.Replace(current.Description, @",\s+(\d+\.\s+[A-ZÁÉÍÓÖŐÚÜŰ])", "\n$1");
                 foreach (var line in desc.Split('\n', StringSplitOptions.RemoveEmptyEntries))
                     Console.WriteLine($"       {line.Trim()}");
             }
