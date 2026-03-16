@@ -25,9 +25,9 @@ if (streamUrls.Length == 0)
     return;
 }
 
-Console.WriteLine("Bartok Radio Player");
-Console.WriteLine($"Loaded {streamUrls.Length} stream(s) from streams.txt");
-Console.WriteLine("Press Ctrl+C to quit");
+Console.WriteLine($"{C.Cyan}Bartok Radio Player{C.R}");
+Console.WriteLine($"{C.Dim}Loaded {streamUrls.Length} stream(s) from streams.txt{C.R}");
+Console.WriteLine($"{C.Dim}Press Ctrl+C to quit{C.R}");
 Console.WriteLine();
 
 using var cts = new CancellationTokenSource();
@@ -50,7 +50,7 @@ while (!cts.Token.IsCancellationRequested)
 
         try
         {
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Connecting to {url}");
+            Console.WriteLine($"{C.Dim}[{DateTime.Now:HH:mm:ss}] Connecting to {url}{C.R}");
 
             using var client = new HttpClient();
             client.Timeout = Timeout.InfiniteTimeSpan;
@@ -72,7 +72,7 @@ while (!cts.Token.IsCancellationRequested)
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Frame error: {ex.Message}");
+                    Console.WriteLine($"{C.Red}[{DateTime.Now:HH:mm:ss}] Frame error: {ex.Message}{C.R}");
                     break;
                 }
 
@@ -81,7 +81,7 @@ while (!cts.Token.IsCancellationRequested)
 
                 if (decompressor == null)
                 {
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Stream: {frame.BitRate / 1000} kbps, {frame.SampleRate} Hz, {frame.ChannelMode}, MPEG {frame.MpegVersion} Layer {frame.MpegLayer}");
+                    Console.WriteLine($"{C.Green}[{DateTime.Now:HH:mm:ss}] Stream: {frame.BitRate / 1000} kbps, {frame.SampleRate} Hz, {frame.ChannelMode}, MPEG {frame.MpegVersion} Layer {frame.MpegLayer}{C.R}");
                     var waveFormat = new Mp3WaveFormat(frame.SampleRate,
                         frame.ChannelMode == ChannelMode.Mono ? 1 : 2,
                         frame.FrameLength, frame.BitRate);
@@ -91,7 +91,7 @@ while (!cts.Token.IsCancellationRequested)
                         BufferDuration = TimeSpan.FromSeconds(30),
                         DiscardOnBufferOverflow = true
                     };
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Playing.");
+                    Console.WriteLine($"{C.Green}[{DateTime.Now:HH:mm:ss}] Playing.{C.R}");
                     waveOut = new WaveOutEvent();
                     waveOut.Init(bufferedProvider);
                     waveOut.Play();
@@ -102,7 +102,7 @@ while (!cts.Token.IsCancellationRequested)
                 bufferedProvider!.AddSamples(decompressed, 0, decompressedBytes);
             }
 
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Stream ended.");
+            Console.WriteLine($"{C.Yellow}[{DateTime.Now:HH:mm:ss}] Stream ended.{C.R}");
             break;
         }
         catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
@@ -111,7 +111,7 @@ while (!cts.Token.IsCancellationRequested)
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Failed: {ex.Message}");
+            Console.WriteLine($"{C.Red}[{DateTime.Now:HH:mm:ss}] Failed: {ex.Message}{C.R}");
         }
         finally
         {
@@ -123,7 +123,7 @@ while (!cts.Token.IsCancellationRequested)
 
     if (!cts.Token.IsCancellationRequested)
     {
-        Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Reconnecting in {ReconnectDelaySec}s...");
+        Console.WriteLine($"{C.Yellow}[{DateTime.Now:HH:mm:ss}] Reconnecting in {ReconnectDelaySec}s...{C.R}");
         try { await Task.Delay(ReconnectDelaySec * 1000, cts.Token); } catch { break; }
     }
 }
@@ -155,7 +155,7 @@ class ProgramSchedule
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Schedule fetch error: {ex.Message}");
+            Console.WriteLine($"{C.Red}[{DateTime.Now:HH:mm:ss}] Schedule fetch error: {ex.Message}{C.R}");
         }
         DisplayCurrentProgram();
     }
@@ -220,19 +220,32 @@ class ProgramSchedule
         {
             _lastDisplayedTitle = current.Title;
             Console.WriteLine();
-            Console.WriteLine($"  Now: {current.Title} ({current.Start:HH:mm}-{current.End:HH:mm})");
+            Console.WriteLine($"  {C.Yellow}Now:{C.R} {C.White}{current.Title}{C.R} {C.Cyan}({current.Start:HH:mm}-{current.End:HH:mm}){C.R}");
             if (!string.IsNullOrWhiteSpace(current.Description))
             {
                 // Split numbered music items like ", 2. Brahms:" onto new lines
-                var desc = Regex.Replace(current.Description, @",\s+(\d+\.\s+[A-ZÁÉÍÓÖŐÚÜŰ])", "\n$1");
+                var desc = Regex.Replace(current.Description, @",\s+(\d+\.\s+\S)", "\n$1");
                 foreach (var line in desc.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-                    Console.WriteLine($"       {line.Trim()}");
+                    Console.WriteLine($"       {C.Dim}{line.Trim()}{C.R}");
             }
             if (next != null)
-                Console.WriteLine($"  Next: {next.Title} ({next.Start:HH:mm})");
+                Console.WriteLine($"  {C.Dim}Next:{C.R} {C.Dim}{next.Title} ({next.Start:HH:mm}){C.R}");
             Console.WriteLine();
         }
     }
+}
+
+// --- ANSI colors ---
+
+static class C
+{
+    public const string R     = "\x1b[0m";
+    public const string Red   = "\x1b[31m";
+    public const string Green = "\x1b[32m";
+    public const string Yellow= "\x1b[33m";
+    public const string Cyan  = "\x1b[36m";
+    public const string White = "\x1b[97m";
+    public const string Dim   = "\x1b[90m";
 }
 
 // --- ReadFullyStream ---
