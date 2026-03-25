@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Deep midnight blue circular background (for the icon itself) -->
+    <path
+        android:fillColor="#0A1A2F"
+        android:pathData="M54,54 m-48,0 a48,48 0 1,1 96,0 a48,48 0 1,1 -96,0" />
+
+    <!-- Golden stylized B with radio waves (centered in the safe zone) -->
+    <!-- The main B shape with gradient-like fill simulation via multiple paths -->
+    <path
+        android:fillColor="#E8B923"
+        android:pathData="M38,32 L38,76 L52,76 C62,76 70,68 70,54 C70,40 62,32 52,32 L38,32 Z" />
+
+    <!-- Inner cutout of the B -->
+    <path
+        android:fillColor="#0A1A2F"
+        android:pathData="M46,40 L46,64 L54,64 C58,64 62,60 62,52 C62,44 58,40 54,40 L46,40 Z" />
+
+    <!-- Radio waves emanating from the B (3 curved lines) -->
+    <!-- Wave 1 (outer) -->
+    <path
+        android:strokeColor="#E8B923"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M72,46 Q78,50 72,54" />
+
+    <!-- Wave 2 (middle) -->
+    <path
+        android:strokeColor="#E8B923"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M68,42 Q76,50 68,58" />
+
+    <!-- Wave 3 (inner, shorter) -->
+    <path
+        android:strokeColor="#E8B923"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M64,48 Q69,50 64,52" />
+
+    <!-- Small radio dot / signal origin inside the B -->
+    <path
+        android:fillColor="#E8B923"
+        android:pathData="M52,52 m-3,0 a3,3 0 1,1 6,0 a3,3 0 1,1 -6,0" />
+
+</vector>

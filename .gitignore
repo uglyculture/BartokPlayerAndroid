@@ -3,3 +3,13 @@ obj/
 publish/
 .claude/
 *.user
+
+# Android
+.gradle/
+.idea/
+build/
+local.properties
+*.iml
+*.apk
+*.aab
+captures/

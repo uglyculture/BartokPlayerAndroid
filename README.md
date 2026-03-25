@@ -1,22 +1,31 @@
-# BartokPlayerWin
+# BartokPlayerAndroid
 
-Windows console application that streams and plays [Bartók Rádió](https://www.mr3-bartok.hu/) (Hungarian classical music radio) with automatic reconnection on connection loss.
+Android app that streams and plays [Bartók Rádió](https://www.mr3-bartok.hu/) (Hungarian classical music radio) with background playback, media notification controls, and automatic reconnection.
+
+## Features
+
+- Streams MP3, OGG Vorbis, OGG Opus, AAC, and HLS audio
+- Background playback with media notification (play/pause from lock screen)
+- Live program schedule from mediaklikk.hu
+- Automatic reconnection and stream failover
+- Dark theme UI
 
 ## Requirements
 
-- .NET 9 runtime
+- Android Studio (includes JDK 17, Android SDK, Gradle)
+- Android 8.0+ (API 26) device or emulator
 
 ## Build & Run
 
-```bash
-dotnet build BartokPlayer/
-dotnet run --project BartokPlayer/
-```
+Open the project in Android Studio, sync Gradle, and run on a device/emulator.
 
-## Publish
+Or from the command line:
 
 ```bash
-dotnet publish BartokPlayer/ -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
+./gradlew assembleDebug
+# APK at app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Produces a single-file exe at `publish/BartokPlayer.exe`.
+## Stream URLs
+
+Edit `app/src/main/assets/streams.txt` to add or change streams (one URL per line, `#` for comments).
