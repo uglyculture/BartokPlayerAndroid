@@ -379,7 +379,7 @@ class MainActivity : ComponentActivity() {
                             connectBluetoothDevice(address)
                         }
                     },
-                    onConfigBt = {
+                    onChangeBtDevice = {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                             if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.BLUETOOTH_CONNECT)
                                 != PackageManager.PERMISSION_GRANTED
@@ -548,9 +548,22 @@ fun BartokPlayerScreen(
     onSleepTimerToggle: () -> Unit,
     onSleepTimer: (Int) -> Unit,
     onConnectBt: () -> Unit,
-    onConfigBt: () -> Unit,
+    onChangeBtDevice: () -> Unit,
     onPlayStop: () -> Unit
 ) {
+    var showSettings by remember { mutableStateOf(false) }
+
+    if (showSettings) {
+        SettingsDialog(
+            autoStartPlay = autoStartPlay,
+            autoConnectBt = autoConnectBt,
+            btDeviceName = btDeviceName,
+            onAutoStartPlayToggle = onAutoStartPlayToggle,
+            onAutoConnectBtToggle = onAutoConnectBtToggle,
+            onChangeBtDevice = onChangeBtDevice,
+            onDismiss = { showSettings = false }
+        )
+    }
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -578,7 +591,18 @@ fun BartokPlayerScreen(
                 color = DimText
             )
 
-            Spacer(Modifier.height(40.dp))
+            // Settings gear
+            Spacer(Modifier.height(8.dp))
+            IconButton(onClick = { showSettings = true }, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Settings",
+                    tint = DimText,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
 
             // Play/Stop button
             FilledIconButton(
@@ -618,42 +642,26 @@ fun BartokPlayerScreen(
             Spacer(Modifier.height(24.dp))
 
             // Bluetooth connect button
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+            val btButtonColor = when {
+                btConnected -> GreenAccent
+                btConnecting -> YellowAccent
+                else -> Cyan
+            }
+            Button(
+                onClick = onConnectBt,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = CardBackground,
+                    contentColor = btButtonColor
+                )
             ) {
-                val btButtonColor = when {
-                    btConnected -> GreenAccent
-                    btConnecting -> YellowAccent
-                    else -> Cyan
-                }
-                Button(
-                    onClick = onConnectBt,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = CardBackground,
-                        contentColor = btButtonColor
-                    )
-                ) {
-                    Icon(
-                        imageVector = if (btDeviceName != null) Icons.Filled.BluetoothAudio else Icons.Filled.Bluetooth,
-                        contentDescription = "Connect Bluetooth",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(btDeviceName ?: "Bluetooth", fontSize = 14.sp)
-                }
-                if (btDeviceName != null) {
-                    Spacer(Modifier.width(4.dp))
-                    IconButton(onClick = onConfigBt, modifier = Modifier.size(32.dp)) {
-                        Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = "Change Bluetooth device",
-                            tint = DimText,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = if (btDeviceName != null) Icons.Filled.BluetoothAudio else Icons.Filled.Bluetooth,
+                    contentDescription = "Connect Bluetooth",
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(btDeviceName ?: "Bluetooth", fontSize = 14.sp)
             }
 
             if (btDeviceName != null) {
@@ -673,47 +681,7 @@ fun BartokPlayerScreen(
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            // Auto options
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Auto-play", fontSize = 12.sp, color = DimText)
-                    Spacer(Modifier.width(6.dp))
-                    Switch(
-                        checked = autoStartPlay,
-                        onCheckedChange = onAutoStartPlayToggle,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Cyan,
-                            checkedTrackColor = Cyan.copy(alpha = 0.3f),
-                            uncheckedThumbColor = DimText,
-                            uncheckedTrackColor = CardBackground
-                        )
-                    )
-                }
-                if (btDeviceName != null) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Auto-connect", fontSize = 12.sp, color = DimText)
-                        Spacer(Modifier.width(6.dp))
-                        Switch(
-                            checked = autoConnectBt,
-                            onCheckedChange = onAutoConnectBtToggle,
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Cyan,
-                                checkedTrackColor = Cyan.copy(alpha = 0.3f),
-                                uncheckedThumbColor = DimText,
-                                uncheckedTrackColor = CardBackground
-                            )
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(24.dp))
 
             // Sleep timer
             if (sleepTimerSeconds > 0) {
@@ -807,6 +775,99 @@ fun BartokPlayerScreen(
             Spacer(Modifier.height(24.dp))
         }
     }
+}
+
+@Composable
+fun SettingsDialog(
+    autoStartPlay: Boolean,
+    autoConnectBt: Boolean,
+    btDeviceName: String?,
+    onAutoStartPlayToggle: (Boolean) -> Unit,
+    onAutoConnectBtToggle: (Boolean) -> Unit,
+    onChangeBtDevice: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Settings") },
+        text = {
+            Column {
+                // Auto-play
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Auto-play", fontSize = 15.sp, color = Color.White)
+                        Text("Start playing when the app opens", fontSize = 12.sp, color = DimText)
+                    }
+                    Switch(
+                        checked = autoStartPlay,
+                        onCheckedChange = onAutoStartPlayToggle,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Cyan,
+                            checkedTrackColor = Cyan.copy(alpha = 0.3f),
+                            uncheckedThumbColor = DimText,
+                            uncheckedTrackColor = CardBackground
+                        )
+                    )
+                }
+
+                // Auto-connect BT — only if a device is configured
+                if (btDeviceName != null) {
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Auto-connect BT", fontSize = 15.sp, color = Color.White)
+                            Text("Connect to $btDeviceName on startup", fontSize = 12.sp, color = DimText)
+                        }
+                        Switch(
+                            checked = autoConnectBt,
+                            onCheckedChange = onAutoConnectBtToggle,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Cyan,
+                                checkedTrackColor = Cyan.copy(alpha = 0.3f),
+                                uncheckedThumbColor = DimText,
+                                uncheckedTrackColor = CardBackground
+                            )
+                        )
+                    }
+                }
+
+                // Bluetooth device selection
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Bluetooth device", fontSize = 15.sp, color = Color.White)
+                        Text(
+                            btDeviceName ?: "No device selected",
+                            fontSize = 12.sp,
+                            color = DimText
+                        )
+                    }
+                    TextButton(onClick = {
+                        onDismiss()
+                        onChangeBtDevice()
+                    }) {
+                        Text(if (btDeviceName != null) "Change" else "Select", color = Cyan)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Done") }
+        },
+        containerColor = CardBackground
+    )
 }
 
 @Composable
