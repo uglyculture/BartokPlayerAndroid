@@ -15,14 +15,29 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import java.net.HttpURLConnection
+import java.net.URL
 
 class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
     private var streamUrls: List<String> = emptyList()
-    private var currentStreamIndex = 0
     private val handler = Handler(Looper.getMainLooper())
-    private val reconnectDelayMs = 3000L
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    private val bufferingTimeoutMs = 8000L
+    private val maxRetryDurationMs = 120_000L
+    private var retryStartTime = 0L
+    private var bufferingTimeoutRunnable: Runnable? = null
+    private var raceJob: Job? = null
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -43,19 +58,32 @@ class PlaybackService : MediaSessionService() {
         player.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 if (!player.playWhenReady || streamUrls.isEmpty()) return
-                // Try next stream URL after a short delay
-                currentStreamIndex = (currentStreamIndex + 1) % streamUrls.size
-                handler.postDelayed({
-                    if (player.playWhenReady) {
-                        player.setMediaItem(createMediaItem(currentStreamIndex))
-                        player.prepare()
+                restartWithRace(player)
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                when (playbackState) {
+                    Player.STATE_BUFFERING -> {
+                        cancelBufferingTimeout()
+                        bufferingTimeoutRunnable = Runnable {
+                            if (player.playbackState == Player.STATE_BUFFERING && player.playWhenReady) {
+                                restartWithRace(player)
+                            }
+                        }.also {
+                            handler.postDelayed(it, bufferingTimeoutMs)
+                        }
                     }
-                }, reconnectDelayMs)
+                    Player.STATE_READY -> {
+                        cancelBufferingTimeout()
+                        retryStartTime = 0L
+                    }
+                    else -> cancelBufferingTimeout()
+                }
             }
         })
 
         if (streamUrls.isNotEmpty()) {
-            player.setMediaItem(createMediaItem(0))
+            player.setMediaItem(createMediaItem(streamUrls[0]))
         }
 
         val intent = packageManager.getLaunchIntentForPackage(packageName)
@@ -74,6 +102,8 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        raceJob?.cancel()
+        serviceScope.cancel()
         mediaSession?.run {
             player.release()
             release()
@@ -81,9 +111,101 @@ class PlaybackService : MediaSessionService() {
         super.onDestroy()
     }
 
-    private fun createMediaItem(index: Int): MediaItem {
+    /**
+     * Race all stream URLs in parallel. The first reachable URL wins,
+     * preferring earlier entries in the list (higher priority).
+     * Returns the best available URL, or null if none respond.
+     */
+    private suspend fun raceStreamUrls(): String? {
+        if (streamUrls.isEmpty()) return null
+
+        // Probe all URLs in parallel
+        val results = Array<Boolean>(streamUrls.size) { false }
+
+        withContext(Dispatchers.IO) {
+            val jobs = streamUrls.mapIndexed { index, url ->
+                launch {
+                    val reachable = probeStream(url)
+                    results[index] = reachable
+                }
+            }
+            // Wait for all probes (they each have their own timeout)
+            jobs.forEach { it.join() }
+        }
+
+        // Return the first reachable URL (list order = priority)
+        for (i in results.indices) {
+            if (results[i]) return streamUrls[i]
+        }
+        return null
+    }
+
+    /**
+     * Probe a stream URL with a short timeout to check if it's reachable.
+     */
+    private fun probeStream(url: String): Boolean {
+        return try {
+            val connection = URL(url).openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
+            connection.setRequestProperty("Range", "bytes=0-1")
+            try {
+                connection.connect()
+                val code = connection.responseCode
+                // Read a tiny bit to confirm data flows
+                val stream = connection.inputStream
+                val byte = stream.read()
+                stream.close()
+                code in 200..399 && byte >= 0
+            } finally {
+                connection.disconnect()
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun restartWithRace(player: Player) {
+        if (streamUrls.isEmpty()) return
+
+        val now = System.currentTimeMillis()
+        if (retryStartTime == 0L) {
+            retryStartTime = now
+        } else if (now - retryStartTime > maxRetryDurationMs) {
+            cancelBufferingTimeout()
+            retryStartTime = 0L
+            player.stop()
+            player.playWhenReady = false
+            return
+        }
+
+        cancelBufferingTimeout()
+        raceJob?.cancel()
+        raceJob = serviceScope.launch {
+            val bestUrl = withTimeoutOrNull(10_000L) { raceStreamUrls() }
+            if (bestUrl != null && player.playWhenReady) {
+                player.stop()
+                player.setMediaItem(createMediaItem(bestUrl))
+                player.prepare()
+                player.play()
+            } else if (player.playWhenReady) {
+                // No URL responded — retry after a delay
+                handler.postDelayed({
+                    if (player.playWhenReady) restartWithRace(player)
+                }, 3000L)
+            }
+        }
+    }
+
+    private fun cancelBufferingTimeout() {
+        bufferingTimeoutRunnable?.let { handler.removeCallbacks(it) }
+        bufferingTimeoutRunnable = null
+    }
+
+    private fun createMediaItem(url: String): MediaItem {
         return MediaItem.Builder()
-            .setUri(streamUrls[index])
+            .setUri(url)
             .setMediaMetadata(
                 MediaMetadata.Builder()
                     .setTitle("Bartók Rádió")
