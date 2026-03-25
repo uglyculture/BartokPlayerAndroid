@@ -242,6 +242,25 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // Re-check BT connection state while "Connecting..."
+                LaunchedEffect(btConnecting) {
+                    if (!btConnecting) return@LaunchedEffect
+                    val address = btDeviceAddress ?: return@LaunchedEffect
+                    // Poll every 2s for up to 15s to catch the actual connection
+                    repeat(7) {
+                        delay(2000L)
+                        checkA2dpConnectionState(address) { connected ->
+                            if (connected) {
+                                btConnected = true
+                                btConnecting = false
+                            }
+                        }
+                        if (btConnected) return@LaunchedEffect
+                    }
+                    // Timed out — stop showing "Connecting..."
+                    if (!btConnected) btConnecting = false
+                }
+
                 // Auto-connect BT and auto-start on launch
                 LaunchedEffect(Unit) {
                     // Wait for MediaController to be ready
@@ -434,19 +453,19 @@ class MainActivity : ComponentActivity() {
     private fun connectBluetoothDevice(address: String) {
         val bluetoothManager = getSystemService(BluetoothManager::class.java)
         val adapter = bluetoothManager?.adapter ?: run {
-            Toast.makeText(this, "Bluetooth not available", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Bluetooth nem elérhető", Toast.LENGTH_SHORT).show()
             return
         }
 
         if (!adapter.isEnabled) {
-            Toast.makeText(this, "Bluetooth is off", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Bluetooth kikapcsolva", Toast.LENGTH_SHORT).show()
             return
         }
 
         val device = try {
             adapter.getRemoteDevice(address)
         } catch (_: Exception) {
-            Toast.makeText(this, "Device not found", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Eszköz nem található", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -463,7 +482,7 @@ class MainActivity : ComponentActivity() {
                     connectMethod.invoke(a2dp, device)
                 } catch (_: Exception) {
                     runOnUiThread {
-                        Toast.makeText(this@MainActivity, "Failed to connect", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "Csatlakozás sikertelen", Toast.LENGTH_SHORT).show()
                     }
                 }
                 adapter.closeProfileProxy(BluetoothProfile.A2DP, proxy)
@@ -586,7 +605,7 @@ fun BartokPlayerScreen(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Hungarian Classical Music",
+                text = "Magyar komolyzenei rádió",
                 fontSize = 14.sp,
                 color = DimText
             )
@@ -626,9 +645,9 @@ fun BartokPlayerScreen(
             // Status
             Text(
                 text = when {
-                    isBuffering -> "Buffering..."
-                    isPlaying -> "Playing"
-                    else -> "Ready"
+                    isBuffering -> "Pufferelés..."
+                    isPlaying -> "Lejátszás"
+                    else -> "Kész"
                 },
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
@@ -668,9 +687,9 @@ fun BartokPlayerScreen(
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = when {
-                        btConnected -> "Connected"
-                        btConnecting -> "Connecting..."
-                        else -> "Not connected"
+                        btConnected -> "Csatlakozva"
+                        btConnecting -> "Csatlakozás..."
+                        else -> "Nincs csatlakozva"
                     },
                     fontSize = 12.sp,
                     color = when {
@@ -764,12 +783,12 @@ fun BartokPlayerScreen(
 
             // Current program
             if (currentProgram != null) {
-                ProgramCard(label = "Now", program = currentProgram, accentColor = YellowAccent)
+                ProgramCard(label = "Most", program = currentProgram, accentColor = YellowAccent)
             }
 
             if (nextProgram != null) {
                 Spacer(Modifier.height(12.dp))
-                ProgramCard(label = "Next", program = nextProgram, accentColor = DimText)
+                ProgramCard(label = "Következő", program = nextProgram, accentColor = DimText)
             }
 
             Spacer(Modifier.height(24.dp))
@@ -789,7 +808,7 @@ fun SettingsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Settings") },
+        title = { Text("Beállítások") },
         text = {
             Column {
                 // Auto-play
@@ -799,8 +818,8 @@ fun SettingsDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Auto-play", fontSize = 15.sp, color = Color.White)
-                        Text("Start playing when the app opens", fontSize = 12.sp, color = DimText)
+                        Text("Automatikus lejátszás", fontSize = 15.sp, color = Color.White)
+                        Text("Indítás az alkalmazás megnyitásakor", fontSize = 12.sp, color = DimText)
                     }
                     Switch(
                         checked = autoStartPlay,
@@ -823,8 +842,8 @@ fun SettingsDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Auto-connect BT", fontSize = 15.sp, color = Color.White)
-                            Text("Connect to $btDeviceName on startup", fontSize = 12.sp, color = DimText)
+                            Text("Automatikus BT csatlakozás", fontSize = 15.sp, color = Color.White)
+                            Text("Csatlakozás a $btDeviceName eszközhöz indításkor", fontSize = 12.sp, color = DimText)
                         }
                         Switch(
                             checked = autoConnectBt,
@@ -847,9 +866,9 @@ fun SettingsDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Bluetooth device", fontSize = 15.sp, color = Color.White)
+                        Text("Bluetooth eszköz", fontSize = 15.sp, color = Color.White)
                         Text(
-                            btDeviceName ?: "No device selected",
+                            btDeviceName ?: "Nincs kiválasztva",
                             fontSize = 12.sp,
                             color = DimText
                         )
@@ -858,13 +877,13 @@ fun SettingsDialog(
                         onDismiss()
                         onChangeBtDevice()
                     }) {
-                        Text(if (btDeviceName != null) "Change" else "Select", color = Cyan)
+                        Text(if (btDeviceName != null) "Módosítás" else "Kiválasztás", color = Cyan)
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Done") }
+            TextButton(onClick = onDismiss) { Text("Kész") }
         },
         containerColor = CardBackground
     )
@@ -880,10 +899,10 @@ fun BluetoothDevicePickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select Bluetooth Device") },
+        title = { Text("Bluetooth eszköz kiválasztása") },
         text = {
             if (devices.isEmpty()) {
-                Text("No paired devices found.\nPair a device in Android Settings first.", color = DimText)
+                Text("Nem található párosított eszköz.\nPárosítsd az eszközt az Android beállításokban.", color = DimText)
             } else {
                 LazyColumn {
                     items(devices) { (name, address) ->
@@ -912,7 +931,7 @@ fun BluetoothDevicePickerDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("Mégse") }
         },
         containerColor = CardBackground
     )
