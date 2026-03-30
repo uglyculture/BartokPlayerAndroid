@@ -1,7 +1,14 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) load(file.inputStream())
 }
 
 android {
@@ -18,16 +25,17 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("../keystore/release.jks")
-            storePassword = "bartokplayer2024"
-            keyAlias = "bartokplayer"
-            keyPassword = "bartokplayer2024"
+            storeFile = file(keystoreProperties.getProperty("storeFile", ""))
+            storePassword = keystoreProperties.getProperty("storePassword", "")
+            keyAlias = keystoreProperties.getProperty("keyAlias", "")
+            keyPassword = keystoreProperties.getProperty("keyPassword", "")
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
         }
