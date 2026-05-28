@@ -4,4 +4,14 @@
 
 # HQ MP3 (320 kbps)
 https://icast.connectmedia.hu/4742/mr3hq.mp3
-http://mr-stream.mediaconnect.hu/4742/mr3hq.mp3
+
+# Standard MP3 (320 kbps) — used by mediaklikk.hu web player
+https://mr-stream.connectmedia.hu/4741/mr3.mp3
+
+# HQ OGG Vorbis (192 kbps)
+https://icast.connectmedia.hu/4767/mr3hq.ogg
+
+# Removed 2026-05-28: these http mirrors failed 43/43 probes in the field logs
+# (dead hosts), and the race waited on them on every reconnect.
+# http://mr-stream.mediaconnect.hu/4742/mr3hq.mp3
+# http://mr-stream.connectmedia.hu/4767/mr3hq.ogg
